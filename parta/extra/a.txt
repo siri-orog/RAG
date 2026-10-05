@@ -1,0 +1,13 @@
+delete
+MATCH (n)
+DETACH DELETE n
+
+
+pipeline_options
+MATCH (n)
+RETURN n
+LIMIT 100
+
+SHOW CONSTRAINTS YIELD name, labelsOrTypes, properties;
+
+DROP CONSTRAINT constraint_5adcbbfe;

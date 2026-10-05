@@ -1,0 +1,16 @@
+# Offline package files
+/modules/
+/parta/modules/
+
+# RAG data
+/parta/data/
+
+# Offline models/resources
+/parta/portable/
+
+# Part B deployment files
+/partb/deploy/
+
+# Python cache
+__pycache__/
+*.py[cod]

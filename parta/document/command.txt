@@ -1,0 +1,9 @@
+delete
+MATCH (n)
+DETACH DELETE n
+
+
+pipeline_options
+MATCH (n)
+RETURN n
+LIMIT 100

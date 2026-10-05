@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ISRO RAG System</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0b0f1a;
+      --surface: #131929;
+      --border:  #1e2d45;
+      --accent:  #0077ff;
+      --accent2: #00c4a7;
+      --danger:  #ff4d4d;
+      --warn:    #f59e0b;
+      --text:    #e2e8f0;
+      --muted:   #64748b;
+      --radius:  12px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    }
+    .card.wide { max-width: 560px; }
+
+    /* ── LOGO ── */
+    .logo { text-align: center; margin-bottom: 28px; }
+    .logo img { height: 151px; width: auto; object-fit: contain; display: block; margin: 0 auto; }
+    .logo svg  { width: 48px; height: 48px; }
+    .logo h1   { font-size: 1.4rem; font-weight: 700; margin-top: -20px; letter-spacing: 0.5px; }
+    .logo p    { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+
+    /* ── TABS ── */
+    .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
+    .tab-btn {
+      flex: 1; background: none; border: none; color: var(--muted);
+      padding: 10px; cursor: pointer; font-size: 0.9rem;
+      border-bottom: 2px solid transparent; transition: all .2s;
+    }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── FORMS ── */
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 6px; }
+    input[type="text"], input[type="email"], input[type="password"] {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); padding: 11px 14px;
+      font-size: 0.95rem; outline: none; transition: border-color .2s;
+    }
+    input:focus { border-color: var(--accent); }
+
+    /* ── FILE DROP ── */
+    .file-drop {
+      border: 2px dashed var(--border); border-radius: 8px;
+      padding: 24px; text-align: center; cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .file-drop:hover, .file-drop.dragover { border-color: var(--accent); background: rgba(0,119,255,0.04); }
+    .file-drop input    { display: none; }
+    .file-drop .icon    { font-size: 2rem; margin-bottom: 8px; }
+    .file-drop p        { font-size: 0.85rem; color: var(--muted); }
+    .file-drop .filename { color: var(--accent2); font-size: 0.9rem; margin-top: 6px; font-weight: 500; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      width: 100%; padding: 13px; border: none; border-radius: 8px;
+      background: var(--accent); color: #fff; font-size: 1rem;
+      font-weight: 600; cursor: pointer; transition: opacity .2s, transform .1s;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.88; }
+    .btn:active               { transform: scale(0.98); }
+    .btn:disabled             { opacity: 0.4; cursor: not-allowed; }
+    .btn.btn-sm {
+      width: auto; padding: 8px 18px; font-size: 0.85rem;
+    }
+    .btn.btn-outline {
+      background: transparent; border: 1px solid var(--accent); color: var(--accent);
+    }
+    .link-btn {
+      background: none; border: none; color: var(--accent);
+      cursor: pointer; font-size: 0.88rem; text-decoration: underline;
+    }
+
+    /* ── ALERT ── */
+    .alert {
+      padding: 11px 14px; border-radius: 8px;
+      font-size: 0.88rem; margin-bottom: 18px; display: none;
+    }
+    .alert.error   { background: rgba(255,77,77,0.12); border: 1px solid var(--danger); color: #ff8888; }
+    .alert.success { background: rgba(0,196,167,0.12); border: 1px solid var(--accent2); color: var(--accent2); }
+    .alert.warn    { background: rgba(245,158,11,0.1); border: 1px solid var(--warn); color: #fbbf24; }
+    .alert.show    { display: block; }
+
+    /* ── VIEW NAV ── */
+    .view-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 22px;
+    }
+    .view-header h3 { font-size: 1rem; font-weight: 600; }
+    .back-btn {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; font-size: 1.1rem; line-height: 1;
+      padding: 4px 6px; border-radius: 6px;
+      transition: color .2s, background .2s;
+    }
+    .back-btn:hover { color: var(--text); background: var(--border); }
+
+    /* ── HUB ── */
+    .hub-actions {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; margin-bottom: 24px;
+    }
+    .hub-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px 16px; text-align: center;
+      cursor: pointer; transition: border-color .2s, transform .15s;
+      position: relative;
+    }
+    .hub-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .hub-card-icon  { font-size: 1.8rem; margin-bottom: 8px; }
+    .hub-card-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; }
+    .hub-card-sub   { font-size: 0.75rem; color: var(--muted); }
+    .hub-badge {
+      position: absolute; top: 10px; right: 10px;
+      background: var(--danger); color: #fff;
+      font-size: 0.68rem; font-weight: 700;
+      border-radius: 99px; padding: 2px 7px;
+      min-width: 20px; text-align: center;
+    }
+
+    /* ── RECENT BOOKS ── */
+    .section-title {
+      font-size: 0.72rem; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.07em; margin-bottom: 10px;
+    }
+    .recent-book {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;
+    }
+    .recent-book-icon { font-size: 1.1rem; }
+    .recent-book-title { font-size: 0.88rem; font-weight: 500; flex: 1; }
+    .recent-book-badge {
+      font-size: 0.7rem; background: rgba(0,196,167,0.15);
+      border: 1px solid rgba(0,196,167,0.3); color: var(--accent2);
+      border-radius: 99px; padding: 2px 8px;
+    }
+
+    /* ── PROGRESS ── */
+    .book-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(0,119,255,0.1); border: 1px solid rgba(0,119,255,0.3);
+      border-radius: 20px; padding: 6px 14px;
+      font-size: 0.85rem; color: var(--accent); margin-bottom: 20px;
+    }
+
+    /* ── PHASE TABS ── */
+    .phase-row {
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 18px;
+    }
+    .phase-pill {
+      flex: 1; display: flex; align-items: center; gap: 6px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 10px;
+      font-size: 0.78rem; color: var(--muted);
+      transition: all .3s;
+    }
+    .phase-pill.active {
+      border-color: var(--accent); color: var(--text);
+      background: rgba(0,119,255,0.07);
+    }
+    .phase-pill.done {
+      border-color: var(--accent2); color: var(--accent2);
+      background: rgba(0,196,167,0.07);
+    }
+    .phase-num {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--border); color: var(--muted);
+      font-size: 0.72rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all .3s;
+    }
+    .phase-pill.active .phase-num { background: var(--accent); color: #fff; }
+    .phase-pill.done   .phase-num { background: var(--accent2); color: #fff; }
+    .phase-arrow { color: var(--border); font-size: 0.85rem; flex-shrink: 0; }
+
+    .stage-label {
+      font-size: 0.82rem; color: var(--muted);
+      margin-bottom: 6px; display: flex; justify-content: space-between;
+    }
+    .progress-bar-wrap {
+      background: var(--border); border-radius: 99px;
+      height: 10px; overflow: hidden; margin-bottom: 8px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 99px; transition: width 0.6s ease; width: 0%;
+    }
+    .stage-msg { font-size: 0.83rem; color: var(--muted); min-height: 20px; margin-bottom: 20px; }
+
+    /* ── SUB-PROGRESS ── */
+    .sub-progress { margin-top: 4px; margin-bottom: 8px; }
+    .sub-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .sub-item .sub-label { font-size: 0.78rem; color: var(--muted); width: 120px; flex-shrink: 0; }
+    .sub-bar-wrap { flex: 1; background: var(--border); border-radius: 99px; height: 6px; overflow: hidden; }
+    .sub-bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; width: 0%; }
+    .sub-bar-fill.qdrant { background: var(--accent); }
+    .sub-bar-fill.neo4j  { background: var(--accent2); }
+    .sub-pct { font-size: 0.75rem; color: var(--muted); width: 32px; text-align: right; }
+
+    /* ── STATUS DOT ── */
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); display: inline-block;
+      animation: pulse 1.4s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .status-dot.done    { background: var(--accent2); animation: none; }
+    .status-dot.failed  { background: var(--danger);  animation: none; }
+    .status-dot.paused  { background: var(--warn);    animation: none; }
+
+    /* ── PENDING JOBS ── */
+    .pending-job {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 10px;
+      margin-bottom: 10px;
+    }
+    .pending-job-info { flex: 1; min-width: 0; }
+    .pending-job-title { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pj-badge {
+      display: inline-block; font-size: 0.7rem; font-weight: 600;
+      border-radius: 99px; padding: 2px 9px; margin-top: 4px;
+    }
+    .pj-badge.ready  { background: rgba(0,196,167,0.15); border: 1px solid rgba(0,196,167,0.35); color: var(--accent2); }
+    .pj-badge.failed { background: rgba(255,77,77,0.12); border: 1px solid rgba(255,77,77,0.3); color: #ff8888; }
+    .pj-time { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+    .empty-state { text-align: center; color: var(--muted); padding: 28px 0; font-size: 0.88rem; }
+
+    /* ── SUCCESS ── */
+    .success-icon  { font-size: 3rem; text-align: center; margin-bottom: 10px; }
+    .success-title { font-size: 1.25rem; font-weight: 700; text-align: center; margin-bottom: 4px; color: var(--accent2); }
+    .success-sub   { font-size: 0.82rem; color: var(--muted); text-align: center; margin-bottom: 20px; }
+
+    .coverage-wrap { margin-bottom: 20px; }
+    .coverage-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+    .coverage-label { font-size: 0.78rem; color: var(--muted); }
+    .coverage-pct   { font-size: 1.1rem; font-weight: 700; }
+    .coverage-bar-bg { background: var(--border); border-radius: 99px; height: 8px; overflow: hidden; }
+    .coverage-bar-fill { height: 100%; border-radius: 99px; transition: width 1s ease; }
+
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+    .stat-box .stat-val { font-size: 1.4rem; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+    .stat-box .stat-lbl { font-size: 0.73rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .breakdown { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+    .breakdown-title { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .breakdown-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .breakdown-row:last-child { margin-bottom: 0; }
+    .bd-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .bd-label { font-size: 0.8rem; color: var(--text); flex: 1; }
+    .bd-count { font-size: 0.8rem; font-weight: 600; }
+    .bd-bar-wrap { width: 80px; background: var(--border); border-radius: 99px; height: 4px; }
+    .bd-bar-fill { height: 100%; border-radius: 99px; }
+
+    .warn-box {
+      background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3);
+      border-radius: 8px; padding: 10px 12px; margin-bottom: 16px;
+      font-size: 0.78rem; color: #fbbf24; display: none;
+    }
+    .warn-box.show { display: block; }
+    .warn-box strong { display: block; margin-bottom: 3px; }
+
+    .text-center { text-align: center; }
+    .mt-8  { margin-top: 8px; }
+    .mt-12 { margin-top: 12px; }
+    .mt-16 { margin-top: 16px; }
+    .mt-20 { margin-top: 20px; }
+
+    /* ── OCR TOGGLE ── */
+    .toggle-row {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px;
+    }
+    .toggle-text { flex: 1; }
+    .toggle-text .t-title { font-size: 0.88rem; font-weight: 600; margin-bottom: 2px; }
+    .toggle-text .t-sub   { font-size: 0.74rem; color: var(--muted); line-height: 1.35; }
+    .toggle-switch {
+      position: relative; display: inline-block;
+      width: 44px; height: 24px; flex-shrink: 0;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--border); border-radius: 24px;
+      transition: background .2s;
+    }
+    .toggle-slider::before {
+      content: ""; position: absolute;
+      height: 18px; width: 18px; left: 3px; bottom: 3px;
+      background: #fff; border-radius: 50%;
+      transition: transform .2s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     AUTH CARD
+══════════════════════════════════════ -->
+<div class="card" id="authCard">
+  <div class="logo">
+    <img src="/static/isro-logo.png" alt="ISRO"
+         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:none;">
+      <circle cx="24" cy="24" r="22" stroke="#0077ff" stroke-width="2"/>
+      <path d="M14 34 L24 12 L34 34" stroke="#0077ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M17 27 H31" stroke="#00c4a7" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <h1>ISRO RAG System</h1>
+    <p>Secure Offline Knowledge Base</p>
+  </div>
+
+  <div class="alert" id="authAlert"></div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('login')">Login</button>
+    <button class="tab-btn"        onclick="switchTab('signup')">Sign Up</button>
+  </div>
+
+  <div id="loginForm">
+    <div class="form-group">
+      <label>Email Address</label>
+      <input type="email" id="loginEmail" placeholder="rajan@isro.in" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" />
+    </div>
+    <button class="btn" onclick="handleLogin()">Login</button>
+  </div>
+
+  <div id="signupForm" style="display:none">
+    <div class="form-group">
+      <label>Full Name</label>
+      <input type="text" id="signupName" placeholder="Dr. Rajan Kumar" />
+    </div>
+    <div class="form-group">
+      <label>Email Address</label>
+      <input type="email" id="signupEmail" placeholder="rajan@isro.in" />
+    </div>
+    <div class="form-group">
+      <label>Password (min 6 characters)</label>
+      <input type="password" id="signupPassword" placeholder="••••••••" />
+    </div>
+    <button class="btn" onclick="handleSignup()">Create Account</button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     MAIN CARD
+══════════════════════════════════════ -->
+<div class="card wide" id="mainCard" style="display:none">
+
+  <div class="logo">
+    <img src="/static/isro-logo.png" alt="ISRO"
+         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+    <svg viewBox="0 0 48 48" fill="none" style="display:none;">
+      <circle cx="24" cy="24" r="22" stroke="#0077ff" stroke-width="2"/>
+      <path d="M14 34 L24 12 L34 34" stroke="#0077ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M17 27 H31" stroke="#00c4a7" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <h1>Knowledge Base</h1>
+    <p id="welcomeUser" style="color:var(--accent2)"></p>
+  </div>
+
+  <div class="alert" id="mainAlert"></div>
+
+  <!-- ── HUB VIEW ── -->
+  <div id="hubView">
+    <div class="hub-actions">
+      <div class="hub-card" onclick="showUploadView()">
+        <div class="hub-card-icon">📤</div>
+        <div class="hub-card-title">Upload New Book</div>
+        <div class="hub-card-sub">Add a PDF to the knowledge base</div>
+      </div>
+      <div class="hub-card" onclick="showPendingView()">
+        <div class="hub-card-icon">⏳</div>
+        <div class="hub-card-title">Pending Jobs</div>
+        <div class="hub-card-sub">Resume interrupted pipelines</div>
+        <div class="hub-badge" id="pendingBadge" style="display:none">0</div>
+      </div>
+    </div>
+
+    <div id="recentBooksSection" style="display:none">
+      <div class="section-title">Recently Completed</div>
+      <div id="recentBooksList"></div>
+    </div>
+
+    <div class="text-center mt-16">
+      <button class="link-btn" onclick="handleLogout()">Logout</button>
+    </div>
+  </div>
+
+  <!-- ── UPLOAD VIEW ── -->
+  <div id="uploadView" style="display:none">
+    <div class="view-header">
+      <button class="back-btn" onclick="showHubView()" title="Back to Hub">←</button>
+      <h3>Upload New Book</h3>
+    </div>
+
+    <div class="form-group">
+      <label>Book ID <span style="color:var(--muted)">(permanent identifier — no spaces)</span></label>
+      <input type="text" id="bookId" placeholder="e.g. GSAT-7A" oninput="checkBookId()" />
+      <div id="bookIdStatus" style="font-size:0.78rem; margin-top:5px; min-height:18px;"></div>
+    </div>
+    <div class="form-group">
+      <label>PDF Document</label>
+      <div class="file-drop" id="fileDrop"
+           onclick="document.getElementById('fileInput').click()"
+           ondrop="handleDrop(event)"
+           ondragover="event.preventDefault(); this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')">
+        <input type="file" id="fileInput" accept=".pdf" onchange="handleFileSelect(event)" />
+        <div class="icon">📄</div>
+        <p>Click to browse or drag & drop PDF here</p>
+        <div class="filename" id="fileName">No file selected</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="toggle-row">
+        <div class="toggle-text">
+          <div class="t-title">Enable OCR</div>
+          <div class="t-sub">
+            Turn this on for scanned PDFs (images of text).
+            Leave off for digital PDFs — extraction is much faster without OCR.
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="ocrToggle" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <button class="btn" id="submitBtn" onclick="handleUpload()" disabled>Upload & Process</button>
+  </div>
+
+  <!-- ── PENDING JOBS VIEW ── -->
+  <div id="pendingView" style="display:none">
+    <div class="view-header">
+      <button class="back-btn" onclick="showHubView()" title="Back to Hub">←</button>
+      <h3>Pending Jobs</h3>
+    </div>
+    <div id="pendingList"><div class="empty-state">Loading...</div></div>
+  </div>
+
+  <!-- ── PROGRESS VIEW ── -->
+  <div id="progressView" style="display:none">
+    <div class="book-badge">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="progressBookId">—</span>
+    </div>
+
+    <!-- Phase indicator -->
+    <div class="phase-row">
+      <div class="phase-pill" id="phase1Pill">
+        <div class="phase-num">1</div>
+        <div>
+          <div style="font-weight:600">Extraction</div>
+          <div style="font-size:0.7rem; margin-top:1px">Extract · Clean · Chunk</div>
+        </div>
+      </div>
+      <div class="phase-arrow">→</div>
+      <div class="phase-pill" id="phase2Pill">
+        <div class="phase-num">2</div>
+        <div>
+          <div style="font-weight:600">Ingestion</div>
+          <div style="font-size:0.7rem; margin-top:1px">Embed · Graph Build</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage-label">
+      <span id="stageLabel">Initializing...</span>
+      <span id="percentLabel">0%</span>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="mainBar"></div>
+    </div>
+    <div class="stage-msg" id="stageMsg">Starting pipeline...</div>
+
+    <div class="sub-progress" id="subProgress" style="display:none">
+      <div class="sub-item">
+        <span class="sub-label">🔵 Vector Store</span>
+        <div class="sub-bar-wrap">
+          <div class="sub-bar-fill qdrant" id="qdrantBar"></div>
+        </div>
+        <span class="sub-pct" id="qdrantPct">0%</span>
+      </div>
+      <div class="sub-item">
+        <span class="sub-label">🟢 Graph Build</span>
+        <div class="sub-bar-wrap">
+          <div class="sub-bar-fill neo4j" id="neo4jBar"></div>
+        </div>
+        <span class="sub-pct" id="neo4jPct">0%</span>
+      </div>
+    </div>
+
+    <div class="text-center mt-8">
+      <button class="link-btn" onclick="showHubView()">← Back to Hub</button>
+    </div>
+  </div>
+
+  <!-- ── SUCCESS VIEW ── -->
+  <div id="successView" style="display:none">
+
+    <div class="success-icon">✅</div>
+    <div class="success-title" id="successBookId">—</div>
+    <div class="success-sub">Successfully added to the knowledge base</div>
+
+    <div class="coverage-wrap">
+      <div class="coverage-header">
+        <span class="coverage-label">Knowledge Coverage</span>
+        <span class="coverage-pct" id="rCoveragePct" style="color:var(--accent2)">—</span>
+      </div>
+      <div class="coverage-bar-bg">
+        <div class="coverage-bar-fill" id="rCoverageBar"
+             style="width:0%; background: linear-gradient(90deg, var(--accent), var(--accent2))"></div>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-val" id="rTotalPages"  style="color:var(--text)">—</div>
+        <div class="stat-lbl">Total Pages</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="rTotalChunks" style="color:var(--accent)">—</div>
+        <div class="stat-lbl">Chunks Indexed</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="rGoodPages"   style="color:var(--accent2)">—</div>
+        <div class="stat-lbl">Pages with Text</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="rAvgWords"    style="color:#a78bfa">—</div>
+        <div class="stat-lbl">Avg Words/Chunk</div>
+      </div>
+    </div>
+
+    <div class="breakdown">
+      <div class="breakdown-title">Page Breakdown</div>
+      <div class="breakdown-row">
+        <div class="bd-dot" style="background:var(--accent2)"></div>
+        <div class="bd-label">Text pages (good)</div>
+        <div class="bd-count" id="rGoodCount"  style="color:var(--accent2)">—</div>
+        <div class="bd-bar-wrap"><div class="bd-bar-fill" id="rGoodBar"  style="background:var(--accent2)"></div></div>
+      </div>
+      <div class="breakdown-row">
+        <div class="bd-dot" style="background:var(--warn)"></div>
+        <div class="bd-label">Short pages (captions)</div>
+        <div class="bd-count" id="rShortCount" style="color:var(--warn)">—</div>
+        <div class="bd-bar-wrap"><div class="bd-bar-fill" id="rShortBar" style="background:var(--warn)"></div></div>
+      </div>
+      <div class="breakdown-row">
+        <div class="bd-dot" style="background:var(--muted)"></div>
+        <div class="bd-label">Blank / image pages</div>
+        <div class="bd-count" id="rBlankCount" style="color:var(--muted)">—</div>
+        <div class="bd-bar-wrap"><div class="bd-bar-fill" id="rBlankBar" style="background:var(--muted)"></div></div>
+      </div>
+    </div>
+
+    <div class="warn-box" id="rWarnBox">
+      <strong>⚠ Attention Required</strong>
+      <span id="rWarnText"></span>
+    </div>
+
+    <button class="btn" onclick="showHubView()">Back to Hub</button>
+
+  </div>
+
+</div><!-- end #mainCard -->
+
+<script>
+  /* ─────────────────────────────────────────────
+     STATE
+  ───────────────────────────────────────────── */
+  let token            = localStorage.getItem("rag_token") || null;
+
+  function clampPct(n) {
+    return Math.min(100, Math.max(0, Number(n) || 0));
+  }
+  let sseSource        = null;
+  let selectedFile     = null;
+  let bookIdCheckTimer = null;
+  let currentBookId    = null;
+  let currentJobId     = null;
+
+  window.onload = () => { if (token) showMainCard(); };
+
+  /* ─────────────────────────────────────────────
+     API HELPER
+  ───────────────────────────────────────────── */
+  async function api(method, path, body = null, isForm = false) {
+    const opts = { method, headers: token ? { Authorization: `Bearer ${token}` } : {} };
+    if (body && !isForm) {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(body);
+    } else if (body && isForm) {
+      opts.body = body;
+    }
+    const res  = await fetch(path, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Request failed");
+    return data;
+  }
+
+  /* ─────────────────────────────────────────────
+     AUTH
+  ───────────────────────────────────────────── */
+  function switchTab(tab) {
+    document.querySelectorAll(".tab-btn").forEach((b, i) => {
+      b.classList.toggle("active",
+        (i === 0 && tab === "login") || (i === 1 && tab === "signup"));
+    });
+    document.getElementById("loginForm").style.display  = tab === "login"  ? "block" : "none";
+    document.getElementById("signupForm").style.display = tab === "signup" ? "block" : "none";
+    clearAlert("authAlert");
+  }
+
+  async function handleSignup() {
+    const name     = document.getElementById("signupName").value.trim();
+    const email    = document.getElementById("signupEmail").value.trim();
+    const password = document.getElementById("signupPassword").value;
+    clearAlert("authAlert");
+    try {
+      await api("POST", "/auth/signup", { name, email, password });
+      showAlert("authAlert", "Account created! Please login.", "success");
+      switchTab("login");
+      document.getElementById("loginEmail").value = email;
+    } catch (e) { showAlert("authAlert", e.message); }
+  }
+
+  async function handleLogin() {
+    const email    = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    clearAlert("authAlert");
+    try {
+      const data = await api("POST", "/auth/login", { email, password });
+      token = data.token;
+      localStorage.setItem("rag_token", token);
+      if (data.user && data.user.role)
+        localStorage.setItem("rag_role", data.user.role);
+      showMainCard(data.user);
+    } catch (e) { showAlert("authAlert", e.message); }
+  }
+
+  function handleLogout() {
+    token = null;
+    localStorage.removeItem("rag_token");
+    localStorage.removeItem("rag_role");
+    if (sseSource) { sseSource.close(); sseSource = null; }
+    document.getElementById("authCard").style.display = "flex";
+    document.getElementById("authCard").style.flexDirection = "column";
+    document.getElementById("mainCard").style.display = "none";
+    switchTab("login");
+  }
+
+  /* ─────────────────────────────────────────────
+     VIEW NAVIGATION
+  ───────────────────────────────────────────── */
+  function showView(id) {
+    ["hubView","uploadView","pendingView","progressView","successView"]
+      .forEach(v => document.getElementById(v).style.display = "none");
+    document.getElementById(id).style.display = "block";
+  }
+
+  function showMainCard(user = null) {
+    document.getElementById("authCard").style.display = "none";
+    document.getElementById("mainCard").style.display = "block";
+    if (user) {
+      document.getElementById("welcomeUser").textContent = `Welcome, ${user.name}`;
+    } else {
+      // Try to decode name from stored token
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        document.getElementById("welcomeUser").textContent = `Welcome, ${payload.name}`;
+      } catch {}
+    }
+    showHubView();
+  }
+
+  function showHubView() {
+    clearAlert("mainAlert");
+    showView("hubView");
+    loadHubData();
+  }
+
+  function showUploadView() {
+    clearAlert("mainAlert");
+    resetUploadForm();
+    showView("uploadView");
+  }
+
+  async function showPendingView() {
+    showView("pendingView");
+    document.getElementById("pendingList").innerHTML =
+      '<div class="empty-state">Loading...</div>';
+    try {
+      const data = await api("GET", "/pending_jobs");
+      renderPendingJobs(data.jobs);
+    } catch (e) {
+      document.getElementById("pendingList").innerHTML =
+        `<div class="empty-state" style="color:var(--danger)">Failed to load jobs: ${e.message}</div>`;
+    }
+  }
+
+  function showProgressView(bookId, jobId) {
+    currentBookId = bookId;
+    currentJobId  = jobId;
+    document.getElementById("progressBookId").textContent = bookId;
+    // Reset bars
+    document.getElementById("mainBar").style.width       = "0%";
+    document.getElementById("mainBar").style.background  = "";
+    document.getElementById("stageLabel").textContent    = "Initializing...";
+    document.getElementById("percentLabel").textContent  = "0%";
+    document.getElementById("stageMsg").textContent      = "Connecting...";
+    document.getElementById("subProgress").style.display = "none";
+    document.getElementById("statusDot").className       = "status-dot";
+    setPhase(0);
+    showView("progressView");
+    startSSE(jobId);
+  }
+
+  /* ─────────────────────────────────────────────
+     HUB DATA
+  ───────────────────────────────────────────── */
+  async function loadHubData() {
+    // Load pending count and recent books in parallel
+    try {
+      const [pendingData, libraryData] = await Promise.allSettled([
+        api("GET", "/pending_jobs"),
+        api("GET", "/library"),
+      ]);
+
+      // Pending badge
+      if (pendingData.status === "fulfilled") {
+        const count = pendingData.value.count || 0;
+        const badge = document.getElementById("pendingBadge");
+        if (count > 0) {
+          badge.textContent    = count;
+          badge.style.display  = "inline-block";
+        } else {
+          badge.style.display  = "none";
+        }
+      }
+
+      // Recent books (last 3)
+      if (libraryData.status === "fulfilled") {
+        const books = (libraryData.value.books || []).slice(-3).reverse();
+        const section = document.getElementById("recentBooksSection");
+        const list    = document.getElementById("recentBooksList");
+        if (books.length) {
+          list.innerHTML = books.map(b => `
+            <div class="recent-book">
+              <div class="recent-book-icon">📚</div>
+              <div class="recent-book-title">${b.book_id}</div>
+              <div class="recent-book-badge">Ready</div>
+            </div>
+          `).join("");
+          section.style.display = "block";
+        } else {
+          section.style.display = "none";
+        }
+      }
+    } catch {}
+  }
+
+  /* ─────────────────────────────────────────────
+     PENDING JOBS
+  ───────────────────────────────────────────── */
+  function renderPendingJobs(jobs) {
+    const el = document.getElementById("pendingList");
+    if (!jobs || !jobs.length) {
+      el.innerHTML = '<div class="empty-state">No pending jobs — all pipelines are either running or complete.</div>';
+      return;
+    }
+    el.innerHTML = jobs.map(j => {
+      const isReady  = j.status === "extraction_done";
+      const badge    = isReady
+        ? `<span class="pj-badge ready">✓ Ready to ingest</span>`
+        : `<span class="pj-badge failed">✗ Ingestion failed</span>`;
+      const timeStr  = j.updated_at ? formatRelativeTime(j.updated_at) : "";
+      return `
+        <div class="pending-job">
+          <div class="pending-job-info">
+            <div class="pending-job-title">${j.book_id}</div>
+            ${badge}
+            <div class="pj-time">${timeStr}</div>
+          </div>
+          <button class="btn btn-sm" onclick="resumeJob('${j.job_id}', '${j.book_id}')">
+            ▶ Resume
+          </button>
+        </div>
+      `;
+    }).join("");
+  }
+
+  async function resumeJob(jobId, bookId) {
+    clearAlert("mainAlert");
+    try {
+      const data = await api("POST", `/resume/${jobId}`);
+      showProgressView(bookId, data.job_id);
+    } catch (e) {
+      showAlert("mainAlert", `Resume failed: ${e.message}`, "error");
+      showView("pendingView"); // stay on pending view so user sees error
+    }
+  }
+
+  /* ─────────────────────────────────────────────
+     FILE DROP + BOOK ID
+  ───────────────────────────────────────────── */
+  function handleFileSelect(e) {
+    const f = e.target.files[0];
+    if (f) setFile(f);
+  }
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById("fileDrop").classList.remove("dragover");
+    const f = e.dataTransfer.files[0];
+    if (f && f.name.endsWith(".pdf")) setFile(f);
+    else showAlert("mainAlert", "Please drop a PDF file.");
+  }
+  function setFile(f) {
+    selectedFile = f;
+    document.getElementById("fileName").textContent = `📎 ${f.name}`;
+    updateSubmitBtn();
+  }
+
+  function checkBookId() {
+    const val      = document.getElementById("bookId").value.trim();
+    const statusEl = document.getElementById("bookIdStatus");
+    clearTimeout(bookIdCheckTimer);
+    if (!val) { statusEl.innerHTML = ""; return; }
+    const valid = /^[A-Za-z0-9_\-]+$/.test(val);
+    if (!valid) {
+      statusEl.style.color = "var(--danger)";
+      statusEl.textContent = "Only letters, numbers, hyphens, underscores allowed.";
+      updateSubmitBtn(false); return;
+    }
+    statusEl.style.color = "var(--muted)";
+    statusEl.textContent = "Checking...";
+    bookIdCheckTimer = setTimeout(async () => {
+      try {
+        const data = await api("GET", `/library/check?book_id=${val}`);
+        if (data.exists || data.running) {
+          statusEl.style.color = "var(--danger)";
+          statusEl.textContent = data.running
+            ? `⚠️ "${val}" is already being processed.`
+            : `⚠️ "${val}" already exists in the library.`;
+          updateSubmitBtn(false);
+        } else {
+          statusEl.style.color = "var(--accent2)";
+          statusEl.textContent = `✓ "${val}" is available.`;
+          updateSubmitBtn();
+        }
+      } catch { statusEl.textContent = ""; updateSubmitBtn(); }
+    }, 600);
+  }
+
+  function updateSubmitBtn(bookOk = null) {
+    const bookId = document.getElementById("bookId").value.trim();
+    const valid  = bookOk !== false && /^[A-Za-z0-9_\-]+$/.test(bookId) && bookId.length > 0;
+    document.getElementById("submitBtn").disabled = !(valid && selectedFile);
+  }
+
+  /* ─────────────────────────────────────────────
+     UPLOAD
+  ───────────────────────────────────────────── */
+  async function handleUpload() {
+    const bookId = document.getElementById("bookId").value.trim();
+    clearAlert("mainAlert");
+    if (!selectedFile || !bookId) {
+      showAlert("mainAlert", "Please provide a Book ID and select a PDF file.");
+      return;
+    }
+    document.getElementById("submitBtn").disabled = true;
+    const ocrEl   = document.getElementById("ocrToggle");
+    const ocrFlag = ocrEl && ocrEl.checked ? "true" : "false";
+    const form = new FormData();
+    form.append("book_id",     bookId);
+    form.append("file",        selectedFile);
+    form.append("ocr_enabled", ocrFlag);
+    try {
+      const data = await api("POST", "/upload_book", form, true);
+      showProgressView(bookId, data.job_id);
+    } catch (e) {
+      showAlert("mainAlert", e.message);
+      document.getElementById("submitBtn").disabled = false;
+    }
+  }
+
+  /* ─────────────────────────────────────────────
+     SSE + PROGRESS
+  ───────────────────────────────────────────── */
+  function startSSE(jobId) {
+    if (sseSource) sseSource.close();
+    sseSource = new EventSource(`/progress/${jobId}`);
+    sseSource.onmessage = (event) => {
+      const d = JSON.parse(event.data);
+      updateProgressUI(d);
+
+      if (d.status === "completed") {
+        sseSource.close(); sseSource = null;
+        setTimeout(() => showSuccess(currentBookId, d.confidence_report), 800);
+      } else if (d.status === "ingestion_failed") {
+        sseSource.close(); sseSource = null;
+        // Job is now resumable — show hub with a warning
+        showHubView();
+        showAlert("mainAlert",
+          `⚠️ Ingestion failed for ${currentBookId}: ${d.error || "unknown error"}. ` +
+          `The job appears in Pending Jobs and can be resumed.`, "warn");
+      } else if (d.status === "extraction_failed") {
+        sseSource.close(); sseSource = null;
+        // Phase 1 failed — nothing to resume, must re-upload
+        document.getElementById("statusDot").className     = "status-dot failed";
+        document.getElementById("mainBar").style.background = "var(--danger)";
+        document.getElementById("stageLabel").textContent  = "Extraction Failed";
+        document.getElementById("stageMsg").textContent    = d.error || "Unknown error";
+      }
+    };
+    sseSource.onerror = () => {};
+  }
+
+  function updateProgressUI(d) {
+    const pct    = clampPct(d.percent);
+    const status = d.status  || "";
+
+    document.getElementById("mainBar").style.width     = pct + "%";
+    document.getElementById("percentLabel").textContent = pct + "%";
+    document.getElementById("stageLabel").textContent   = d.stage   || "";
+    document.getElementById("stageMsg").textContent     = d.message || "";
+
+    // Phase pill state
+    const phase1Done    = ["extraction_done","ingesting","completed"].includes(status);
+    const phase2Active  = ["ingesting"].includes(status);
+    const phase2Done    = status === "completed";
+
+    document.getElementById("phase1Pill").className =
+      "phase-pill" + (phase1Done ? " done" : (status === "extracting" || status === "queued" ? " active" : ""));
+    document.getElementById("phase2Pill").className =
+      "phase-pill" + (phase2Done ? " done" : (phase2Active ? " active" : ""));
+
+    // Sub-bars (Phase 2 only)
+    const qp      = d.qdrant_progress || {};
+    const np      = d.neo4j_progress  || {};
+    const showSub = ["ingesting","completed"].includes(status) ||
+                    qp.status === "running" || np.status === "running" ||
+                    qp.status === "done"    || np.status === "done";
+
+    document.getElementById("subProgress").style.display = showSub ? "block" : "none";
+    if (showSub) {
+      const qPct = clampPct(qp.percent);
+      const nPct = clampPct(np.percent);
+      document.getElementById("qdrantBar").style.width  = qPct + "%";
+      document.getElementById("neo4jBar").style.width   = nPct + "%";
+      document.getElementById("qdrantPct").textContent  = qPct + "%";
+      document.getElementById("neo4jPct").textContent   = nPct + "%";
+    }
+
+    // Status dot
+    const dot = document.getElementById("statusDot");
+    if      (status === "completed")          dot.className = "status-dot done";
+    else if (status === "extraction_failed" ||
+             status === "ingestion_failed")   dot.className = "status-dot failed";
+    else                                      dot.className = "status-dot";
+  }
+
+  function setPhase(n) {
+    document.getElementById("phase1Pill").className = "phase-pill" + (n >= 1 ? (n > 1 ? " done" : " active") : "");
+    document.getElementById("phase2Pill").className = "phase-pill" + (n >= 2 ? " active" : "");
+  }
+
+  /* ─────────────────────────────────────────────
+     SUCCESS REPORT
+  ───────────────────────────────────────────── */
+  function showSuccess(bookId, report) {
+    showView("successView");
+    document.getElementById("successBookId").textContent = bookId;
+
+    if (!report) {
+      document.getElementById("rCoveragePct").textContent = "Ready";
+      return;
+    }
+
+    const total  = report.total_pages        || 0;
+    const good   = report.good_pages          || 0;
+    const short  = report.short_pages         || 0;
+    const blank  = report.blank_image_pages   || 0;
+    const chunks = report.total_chunks        || 0;
+    const avgW   = report.avg_words_per_chunk || 0;
+    const cov    = report.coverage_percent    || 0;
+    const zeros  = report.zero_chunk_pages    || [];
+
+    const covColor = cov >= 85 ? "var(--accent2)" : cov >= 65 ? "var(--warn)" : "var(--danger)";
+
+    setText("rCoveragePct",  cov + "%");
+    setStyle("rCoveragePct", "color", covColor);
+    setStyle("rCoverageBar", "width", cov + "%");
+
+    setText("rTotalPages",  total);
+    setText("rTotalChunks", chunks);
+    setText("rGoodPages",   good);
+    setText("rAvgWords",    avgW);
+
+    const pct = n => total ? Math.round(n / total * 100) + "%" : "0%";
+    setText("rGoodCount",  good);
+    setText("rShortCount", short);
+    setText("rBlankCount", blank);
+    setStyle("rGoodBar",  "width", pct(good));
+    setStyle("rShortBar", "width", pct(short));
+    setStyle("rBlankBar", "width", pct(blank));
+
+    const warnBox = document.getElementById("rWarnBox");
+    if (zeros.length > 0) {
+      warnBox.classList.add("show");
+      document.getElementById("rWarnText").textContent =
+        `${zeros.length} page${zeros.length > 1 ? "s" : ""} had text but produced no chunks ` +
+        `(pages ${zeros.slice(0,5).join(", ")}${zeros.length > 5 ? "…" : ""}). ` +
+        "These pages will not appear in search results.";
+    } else {
+      warnBox.classList.remove("show");
+    }
+  }
+
+  /* ─────────────────────────────────────────────
+     ALERT HELPERS
+  ───────────────────────────────────────────── */
+  function showAlert(id, msg, type = "error") {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = `alert ${type} show`;
+  }
+  function clearAlert(id) {
+    const el = document.getElementById(id);
+    if (el) { el.className = "alert"; el.textContent = ""; }
+  }
+  function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+  function setStyle(id, prop, val) {
+    const el = document.getElementById(id);
+    if (el) el.style[prop] = val;
+  }
+
+  /* ─────────────────────────────────────────────
+     UTILITIES
+  ───────────────────────────────────────────── */
+  function resetUploadForm() {
+    selectedFile = null;
+    const bookId = document.getElementById("bookId");
+    if (bookId) bookId.value = "";
+    document.getElementById("fileName").textContent      = "No file selected";
+    document.getElementById("submitBtn").disabled        = true;
+    document.getElementById("bookIdStatus").textContent  = "";
+    const ocrEl = document.getElementById("ocrToggle");
+    if (ocrEl) ocrEl.checked = false;
+    if (sseSource) { sseSource.close(); sseSource = null; }
+  }
+
+  function formatRelativeTime(isoStr) {
+    try {
+      const diff = Date.now() - new Date(isoStr).getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1)   return "just now";
+      if (mins < 60)  return `${mins}m ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24)   return `${hrs}h ago`;
+      return `${Math.floor(hrs / 24)}d ago`;
+    } catch { return ""; }
+  }
+
+  /* ─────────────────────────────────────────────
+     KEYBOARD SHORTCUTS
+  ───────────────────────────────────────────── */
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const loginForm  = document.getElementById("loginForm");
+    const signupForm = document.getElementById("signupForm");
+    if (loginForm  && loginForm.style.display  !== "none") handleLogin();
+    if (signupForm && signupForm.style.display !== "none") handleSignup();
+  });
+</script>
+</body>
+</html>

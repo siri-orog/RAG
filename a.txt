@@ -1,0 +1,159 @@
+Here is the full **offline setup process on the ISRO PC**, in order.
+
+---
+
+## Phase 1 — Copy files from your PC (USB / transfer)
+
+Copy these to the ISRO PC (e.g. `D:\RAG\`):
+
+| What | Path on ISRO PC |
+|------|-----------------|
+| Conda env archive | `D:\offline_bundle\partb.tar.gz` |
+| Part B code | `D:\RAG\partb\` |
+| Part A models | `D:\RAG\parta\portable\` (nomic, gliner, reranker) |
+| NLTK data | `D:\RAG\parta\portable\nltk_data\` (rename from `nlkt_data` if needed) |
+| PDFs + metadata | `D:\RAG\parta\data\raw\`, `metadata\`, `checkpoints\` |
+| Optional: Mongo dump | if you exported users/chats/library |
+| Optional: Qdrant + Neo4j backups | if you want the same KB without re-ingesting |
+
+**Minimum to run Part B chat:** env + `partb/` + `parta/portable/` + ingested data in Mongo/Qdrant/Neo4j.
+
+---
+
+## Phase 2 — Extract conda environment
+
+Open **PowerShell or CMD** as admin if needed:
+
+```powershell
+mkdir C:\envs\partb
+cd C:\envs\partb
+tar -xf D:\offline_bundle\partb.tar.gz
+.\Scripts\conda-unpack.exe
+```
+
+Wait until `conda-unpack` finishes (fixes paths for the new machine).
+
+**Test Python:**
+
+```powershell
+C:\envs\partb\python.exe --version
+# Should show Python 3.10.9
+```
+
+---
+
+## Phase 3 — External services (must be running)
+
+Part B expects these on **localhost** (same as your `partb/config.py`):
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| **MongoDB** | 27017 | users, chats, library |
+| **Qdrant** | 6333 | vector search |
+| **Neo4j** | 7687 | graph retrieval |
+| **Ollama** | 11434 | LLM answers |
+
+On ISRO PC you must either:
+
+- **Install and start** each service locally, or  
+- **Restore** Mongo/Qdrant/Neo4j data from backups you copied  
+
+If Mongo/Qdrant/Neo4j are empty, the app may start but **retrieval will return nothing** until you ingest (Part A) or restore data.
+
+**Ollama:** pull/copy the same model name as in `partb/config.py` (check `OLLAMA_MODEL` there).
+
+---
+
+## Phase 4 — Fix NLTK folder name (if needed)
+
+If you only have `nlkt_data`:
+
+```powershell
+Copy-Item -Recurse D:\RAG\parta\portable\nlkt_data D:\RAG\parta\portable\nltk_data
+```
+
+---
+
+## Phase 5 — Run Part B
+
+```powershell
+cd D:\RAG
+$env:PYTHONPATH = "D:\RAG"
+C:\envs\partb\python.exe -m uvicorn partb.app:app --host 0.0.0.0 --port 9000
+```
+
+Leave that window open. In browser: **http://localhost:9000**
+
+---
+
+## Phase 6 — Verify (5-minute checklist)
+
+1. **Login** — sign in or sign up (first user may be admin).
+2. **Health** — top bar should not say all services degraded (Mongo, Qdrant, Neo4j, Ollama up).
+3. **Library** — new chat → select book (e.g. **GSAT**).
+4. **Ask** — e.g. “When was Bhaskara-1 launched?”
+5. **Sources** — click a source chip → side panel shows **page image**.
+6. **No errors** in the terminal (no Qdrant `search` errors if you copied updated code).
+
+Quick import test before uvicorn:
+
+```powershell
+cd D:\RAG
+$env:PYTHONPATH = "D:\RAG"
+C:\envs\partb\python.exe -c "from partb.app import app; print('app OK')"
+```
+
+---
+
+## Optional — Restore MongoDB (if you exported a dump)
+
+On internet PC you might have run:
+
+```powershell
+mongodump --db rag_system --out E:\RAG\offline_bundle\mongo_dump
+```
+
+On ISRO PC (with `mongod` running):
+
+```powershell
+mongorestore --db rag_system D:\offline_bundle\mongo_dump\rag_system
+```
+
+Same idea for Qdrant/Neo4j if you have snapshots — otherwise re-run Part A ingest on ISRO for each PDF.
+
+---
+
+## One-page flow
+
+```text
+1. Copy partb.tar.gz + RAG folder (+ DB backups optional)
+2. tar -xf → conda-unpack.exe in C:\envs\partb
+3. Start MongoDB, Qdrant, Neo4j, Ollama (+ model)
+4. Restore DB data OR ingest with Part A
+5. PYTHONPATH=D:\RAG → uvicorn partb.app:app --port 9000
+6. Browser → login → chat → test question
+```
+
+---
+
+## Common issues on ISRO PC
+
+| Problem | Fix |
+|---------|-----|
+| `conda-unpack` not found | Extract tar fully; run from `C:\envs\partb\Scripts\` |
+| Import error for `partb` | Set `$env:PYTHONPATH = "D:\RAG"` |
+| Health degraded | Start the failing service (mongo/qdrant/neo4j/ollama) |
+| No books in library | Mongo empty → ingest via Part A or restore dump |
+| Empty answers / no sources | Qdrant/Neo4j empty or wrong `book_id` (use **GSAT** not gsat if that’s in library) |
+| Page panel blank | Copy `parta/data/raw/gsat.pdf` + fix `nltk_data` name |
+
+---
+
+## What you do NOT need on ISRO for Part B only
+
+- Internet  
+- `pip install` (already in packed env)  
+- LiteLLM proxy (if `USE_OLLAMA_DIRECT = True`)  
+- Part A running unless you want to ingest new PDFs there too  
+
+If you tell me whether ISRO already has Mongo/Qdrant/Neo4j/Ollama installed or you’re bringing everything fresh, I can trim this to a shorter “day 1” list for that case only.
